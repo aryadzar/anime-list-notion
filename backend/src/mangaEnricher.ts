@@ -50,22 +50,26 @@ export function extractTitlesFromText(text: string): { title: string; link?: str
         const u = new URL(line);
         const segments = u.pathname.split("/").filter(Boolean);
 
-        // 1. Detect MangaGo / Webtoon / Manga reading URLs:
+        // 1. Detect MangaGo / Webtoon / Manga reading URLs / Anime streaming & database URLs:
         // E.g. https://www.mangago.me/read-manga/perfect_spiral/
-        // E.g. https://www.mangago.me/read-manga/perfect_spiral/bt/chapter-1/
+        // E.g. https://myanimelist.net/anime/52991/Sousou_no_Frieren
+        // E.g. https://anilist.co/anime/154587/Sousou-no-Frieren/
         const prefixIndex = segments.findIndex((s) =>
-          ["read-manga", "manga", "series", "comic", "manhwa"].includes(s.toLowerCase())
+          ["read-manga", "manga", "series", "comic", "manhwa", "anime"].includes(s.toLowerCase())
         );
 
         if (prefixIndex !== -1 && segments[prefixIndex + 1] && !/^\d+$/.test(segments[prefixIndex + 1])) {
           line = segments[prefixIndex + 1].replace(/[-_]+/g, " ");
+        } else if (prefixIndex !== -1 && segments[prefixIndex + 2] && /^\d+$/.test(segments[prefixIndex + 1])) {
+          // URLs like /anime/52991/Sousou_no_Frieren
+          line = segments[prefixIndex + 2].replace(/[-_]+/g, " ");
         } else if (segments.includes("home") && segments.includes("people")) {
           // If the user pasted a profile/bookmark list URL like /home/people/1319448/manga/1/
           line = "Daftar Bookmark MangaGo";
         } else {
           // General slug extraction
           const slug = segments.pop() || segments.pop() || "";
-          if (slug && !/^(home|people|\d+|manga|read-manga|chapter|series)$/i.test(slug)) {
+          if (slug && !/^(home|people|\d+|manga|read-manga|chapter|series|anime)$/i.test(slug)) {
             line = slug.replace(/[-_]+/g, " ");
           } else if (segments.length > 0) {
             line = segments[segments.length - 1].replace(/[-_]+/g, " ");
@@ -95,12 +99,14 @@ export function extractTitlesFromText(text: string): { title: string; link?: str
   return results;
 }
 
-// 1. Query AniList GraphQL API (Excellent for Korean Manhwa, Lezhin, Webtoons, Manga)
-async function searchAniList(title: string): Promise<Partial<MangaPreviewItem> | null> {
+// 1. Query AniList GraphQL API (Excellent for Anime, Korean Manhwa, Japanese Manga, Manhua, Novels)
+async function searchAniList(title: string, typeHint?: string): Promise<Partial<MangaPreviewItem> | null> {
   const query = `
-    query ($search: String) {
-      Media (search: $search, type: MANGA) {
+    query ($search: String, $type: MediaType) {
+      Media (search: $search, type: $type) {
         id
+        type
+        format
         title {
           romaji
           english
@@ -120,6 +126,18 @@ async function searchAniList(title: string): Promise<Partial<MangaPreviewItem> |
     }
   `;
 
+  let anilistType: "ANIME" | "MANGA" | undefined = undefined;
+  if (typeHint === "Anime") {
+    anilistType = "ANIME";
+  } else if (typeHint === "Manga" || typeHint === "Manhwa" || typeHint === "Manhua") {
+    anilistType = "MANGA";
+  }
+
+  const variables: Record<string, any> = { search: title };
+  if (anilistType) {
+    variables.type = anilistType;
+  }
+
   try {
     const res = await fetch("https://graphql.anilist.co", {
       method: "POST",
@@ -127,7 +145,7 @@ async function searchAniList(title: string): Promise<Partial<MangaPreviewItem> |
         "Content-Type": "application/json",
         "User-Agent": "AnimeNotionVault/2.0",
       },
-      body: JSON.stringify({ query, variables: { search: title } }),
+      body: JSON.stringify({ query, variables }),
     });
 
     if (!res.ok) return null;
@@ -135,12 +153,21 @@ async function searchAniList(title: string): Promise<Partial<MangaPreviewItem> |
     const media = json.data?.Media;
     if (!media) return null;
 
-    // Detect type based on origin country
-    let tipe = "Manhwa";
-    if (media.countryOfOrigin === "KR") tipe = "Manhwa";
-    else if (media.countryOfOrigin === "JP") tipe = "Manga";
-    else if (media.countryOfOrigin === "CN" || media.countryOfOrigin === "TW" || media.countryOfOrigin === "HK")
+    // Detect type based on media.type, format, and country of origin
+    let tipe = "Anime";
+    if (media.type === "ANIME") {
+      tipe = "Anime";
+    } else if (media.format === "NOVEL") {
+      tipe = "Novel";
+    } else if (media.countryOfOrigin === "KR") {
+      tipe = "Manhwa";
+    } else if (media.countryOfOrigin === "JP") {
+      tipe = "Manga";
+    } else if (media.countryOfOrigin === "CN" || media.countryOfOrigin === "TW" || media.countryOfOrigin === "HK") {
       tipe = "Manhua";
+    } else {
+      tipe = "Manga";
+    }
 
     // Status
     let status = "Reading/Watching";
@@ -162,14 +189,17 @@ async function searchAniList(title: string): Promise<Partial<MangaPreviewItem> |
       media.coverImage?.medium ||
       null;
 
-    const tags: TagItem[] = (media.genres || []).slice(0, 5).map((g: string) => ({ name: g }));
+    const rawGenres = media.genres || [];
+    const tags: TagItem[] = rawGenres.length > 0
+      ? rawGenres.slice(0, 5).map((g: string) => ({ name: g }))
+      : [{ name: tipe }];
 
     return {
       title: mainTitle,
       cover: coverUrl,
       tipe,
       status,
-      tags: tags.length > 0 ? tags : [{ name: "Webtoon" }],
+      tags,
       notes,
       link: media.siteUrl,
       matched: true,
@@ -230,11 +260,11 @@ async function searchMangaDexOnly(title: string): Promise<Partial<MangaPreviewIt
       : null;
 
     const lang = bestManga.attributes?.originalLanguage;
-    let tipe = "Manhwa";
+    let tipe = "Manga";
     if (lang === "ja") tipe = "Manga";
     else if (lang === "ko") tipe = "Manhwa";
     else if (lang === "zh" || lang === "zh-hk") tipe = "Manhua";
-    else if (lang === "en") tipe = "Manhwa";
+    else if (lang === "en") tipe = "Manga";
 
     const enTitle =
       bestManga.attributes?.title?.en ||
@@ -266,7 +296,7 @@ async function searchMangaDexOnly(title: string): Promise<Partial<MangaPreviewIt
       cover: coverUrl,
       tipe,
       status,
-      tags: tags.length > 0 ? tags : [{ name: "Webtoon" }],
+      tags: tags.length > 0 ? tags : [{ name: tipe }],
       notes,
       link: `https://mangadex.org/title/${bestManga.id}`,
       matched: true,
@@ -277,79 +307,111 @@ async function searchMangaDexOnly(title: string): Promise<Partial<MangaPreviewIt
   }
 }
 
-// Dual-Engine Enricher (MangaDex + AniList Fallback)
+// Dual-Engine Enricher (AniList Primary + MangaDex Fallback)
 export async function searchMangaDex(
   title: string,
-  originalUrl?: string
+  originalUrl?: string,
+  typeHint?: string
 ): Promise<MangaPreviewItem> {
-  const tempId = "MD-" + Math.random().toString(36).slice(2, 9);
+  const tempId = "ENR-" + Math.random().toString(36).slice(2, 9);
 
-  // 1. Try MangaDex first
-  const mdResult = await searchMangaDexOnly(title);
-
-  // If MangaDex returned a match WITH cover, return it
-  if (mdResult && mdResult.cover) {
-    return {
-      id: tempId,
-      title: mdResult.title || title,
-      originalQuery: title,
-      cover: mdResult.cover,
-      tipe: mdResult.tipe || "Manhwa",
-      status: mdResult.status || "Reading/Watching",
-      tags: mdResult.tags || [{ name: "Webtoon" }],
-      link: originalUrl || mdResult.link || null,
-      notes: mdResult.notes || "",
-      matched: true,
-      selected: true,
-    };
+  // Auto-detect if URL or title implies Anime
+  let effectiveTypeHint = typeHint;
+  if (!effectiveTypeHint && originalUrl) {
+    if (
+      originalUrl.includes("/anime") ||
+      originalUrl.includes("myanimelist.net") ||
+      originalUrl.includes("crunchyroll") ||
+      originalUrl.includes("bilibili")
+    ) {
+      effectiveTypeHint = "Anime";
+    }
   }
 
-  // 2. Fallback to AniList GraphQL (vital for webtoons, Korean manhwa like Perfect Spiral, Lezhin, etc.)
-  console.log(`[ENRICHER] Mencari di AniList untuk "${title}"...`);
-  const anilistResult = await searchAniList(title);
+  // 1. Try AniList First (Comprehensive metadata: handles Anime, Manga, Manhwa, Manhua, and true genres)
+  console.log(`[ENRICHER] Mencari di AniList untuk "${title}" (hint: ${effectiveTypeHint || "auto"})...`);
+  const anilistResult = await searchAniList(title, effectiveTypeHint);
 
-  if (anilistResult) {
+  if (anilistResult && anilistResult.cover) {
     return {
       id: tempId,
       title: anilistResult.title || title,
       originalQuery: title,
-      cover: anilistResult.cover || mdResult?.cover || null,
-      tipe: anilistResult.tipe || mdResult?.tipe || "Manhwa",
-      status: anilistResult.status || mdResult?.status || "Reading/Watching",
-      tags: anilistResult.tags || mdResult?.tags || [{ name: "Webtoon" }],
-      link: originalUrl || anilistResult.link || mdResult?.link || null,
-      notes: anilistResult.notes || mdResult?.notes || "",
+      cover: anilistResult.cover,
+      tipe: anilistResult.tipe || (effectiveTypeHint === "Anime" ? "Anime" : "Manhwa"),
+      status: anilistResult.status || "Reading/Watching",
+      tags: anilistResult.tags && anilistResult.tags.length > 0 ? anilistResult.tags : [{ name: anilistResult.tipe || "Anime" }],
+      link: originalUrl || anilistResult.link || null,
+      notes: anilistResult.notes || "",
       matched: true,
       selected: true,
     };
   }
 
-  // 3. If only MangaDex had partial metadata (no cover)
-  if (mdResult) {
+  // 2. Fallback to MangaDex for Manga/Manhwa if not searching specifically for Anime
+  if (effectiveTypeHint !== "Anime") {
+    console.log(`[ENRICHER] Mencari di MangaDex untuk "${title}"...`);
+    const mdResult = await searchMangaDexOnly(title);
+
+    if (mdResult && mdResult.cover) {
+      return {
+        id: tempId,
+        title: mdResult.title || title,
+        originalQuery: title,
+        cover: mdResult.cover,
+        tipe: mdResult.tipe || "Manhwa",
+        status: mdResult.status || "Reading/Watching",
+        tags: mdResult.tags || [{ name: mdResult.tipe || "Manga" }],
+        link: originalUrl || mdResult.link || null,
+        notes: mdResult.notes || "",
+        matched: true,
+        selected: true,
+      };
+    }
+
+    if (anilistResult) {
+      return {
+        id: tempId,
+        title: anilistResult.title || title,
+        originalQuery: title,
+        cover: mdResult?.cover || null,
+        tipe: anilistResult.tipe || "Manhwa",
+        status: anilistResult.status || "Reading/Watching",
+        tags: anilistResult.tags && anilistResult.tags.length > 0 ? anilistResult.tags : [{ name: anilistResult.tipe || "Manhwa" }],
+        link: originalUrl || anilistResult.link || null,
+        notes: anilistResult.notes || "",
+        matched: true,
+        selected: true,
+      };
+    }
+  } else if (anilistResult) {
     return {
       id: tempId,
-      title: mdResult.title || title,
+      title: anilistResult.title || title,
       originalQuery: title,
-      cover: mdResult.cover || null,
-      tipe: mdResult.tipe || "Manhwa",
-      status: mdResult.status || "Reading/Watching",
-      tags: mdResult.tags || [{ name: "Webtoon" }],
-      link: originalUrl || mdResult.link || null,
-      notes: mdResult.notes || "",
+      cover: anilistResult.cover || null,
+      tipe: anilistResult.tipe || "Anime",
+      status: anilistResult.status || "Reading/Watching",
+      tags: anilistResult.tags && anilistResult.tags.length > 0 ? anilistResult.tags : [{ name: "Anime" }],
+      link: originalUrl || anilistResult.link || null,
+      notes: anilistResult.notes || "",
       matched: true,
       selected: true,
     };
   }
 
-  // 4. Default Fallback
+  // 3. Clean Default Fallback
+  const defaultTipe = effectiveTypeHint === "Anime" ? "Anime" : "Manhwa";
+  const defaultTags = effectiveTypeHint === "Anime" ? [{ name: "Anime" }] : [{ name: defaultTipe }];
+
   return {
     id: tempId,
     title,
     originalQuery: title,
     cover: null,
-    tipe: "Manhwa",
+    tipe: defaultTipe,
     status: "Reading/Watching",
-    tags: [{ name: "Webtoon" }],
+    tags: defaultTags,
     link: originalUrl || null,
     notes: "",
     matched: false,
@@ -358,7 +420,10 @@ export async function searchMangaDex(
 }
 
 // Batch preview with controlled concurrency
-export async function generateMangaPreview(rawText: string): Promise<MangaPreviewItem[]> {
+export async function generateMangaPreview(
+  rawText: string,
+  typeHint?: string
+): Promise<MangaPreviewItem[]> {
   const extracted = extractTitlesFromText(rawText);
   if (extracted.length === 0) return [];
 
@@ -368,7 +433,7 @@ export async function generateMangaPreview(rawText: string): Promise<MangaPrevie
   const chunkSize = 4;
   for (let i = 0; i < itemsToProcess.length; i += chunkSize) {
     const chunk = itemsToProcess.slice(i, i + chunkSize);
-    const chunkPromises = chunk.map((item) => searchMangaDex(item.title, item.link));
+    const chunkPromises = chunk.map((item) => searchMangaDex(item.title, item.link, typeHint));
     const chunkResults = await Promise.all(chunkPromises);
     results.push(...chunkResults);
 

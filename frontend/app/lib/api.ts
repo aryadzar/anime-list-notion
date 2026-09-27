@@ -68,9 +68,10 @@ export async function fetchBackendStatus(): Promise<BackendStatus> {
   }
 }
 
-// Request preview of manga titles from backend enricher
+// Request preview of manga/anime titles from backend enricher
 export async function previewMangaImport(
-  rawText: string
+  rawText: string,
+  typeHint?: string
 ): Promise<{ success: boolean; count: number; data: import("../types/notion").MangaPreviewItem[]; message?: string }> {
   const headers = {
     ...getAuthHeaders(),
@@ -81,7 +82,7 @@ export async function previewMangaImport(
     method: "POST",
     headers,
     credentials: "include",
-    body: JSON.stringify({ rawText }),
+    body: JSON.stringify({ rawText, typeHint }),
   });
 
   if (!res.ok) {

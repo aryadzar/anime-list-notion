@@ -301,17 +301,17 @@ const app = new Elysia()
       const auth = await verifyAuth(headers, auth_token, jwt, set);
       if (!auth.ok) return { success: false, message: auth.error };
 
-      const { rawText } = body as { rawText?: string };
+      const { rawText, typeHint } = body as { rawText?: string; typeHint?: string };
       if (!rawText || !rawText.trim()) {
         return {
           success: false,
-          message: "Teks atau daftar judul komik tidak boleh kosong.",
+          message: "Teks atau daftar judul komik/anime tidak boleh kosong.",
           data: [],
         };
       }
 
-      console.log(`[MANGA] Memproses preview untuk input teks (${rawText.length} karakter)...`);
-      const items = await generateMangaPreview(rawText);
+      console.log(`[ENRICHER] Memproses preview untuk input teks (${rawText.length} karakter, hint: ${typeHint || "auto"})...`);
+      const items = await generateMangaPreview(rawText, typeHint);
 
       return {
         success: true,
@@ -322,6 +322,7 @@ const app = new Elysia()
     {
       body: t.Object({
         rawText: t.String(),
+        typeHint: t.Optional(t.String()),
       }),
     }
   )

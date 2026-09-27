@@ -16,6 +16,7 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   // TAB 1: SMART BATCH / WEB IMPORT STATE
   // ==========================================
   const [rawInput, setRawInput] = useState("");
+  const [typePreference, setTypePreference] = useState<"Auto" | "Anime" | "Manhwa" | "Manga">("Auto");
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [previewItems, setPreviewItems] = useState<MangaPreviewItem[]>([]);
@@ -26,13 +27,13 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   // TAB 2: MANUAL ENTRY STATE
   // ==========================================
   const [title, setTitle] = useState("");
-  const [tipe, setTipe] = useState("Manhwa");
+  const [tipe, setTipe] = useState("Anime");
   const [status, setStatus] = useState("Reading/Watching");
   const [tagsInput, setTagsInput] = useState("Action, Fantasy");
   const [link, setLink] = useState("");
   const [cover, setCover] = useState("");
   const [notes, setNotes] = useState("");
-  const [icon, setIcon] = useState("📖");
+  const [icon, setIcon] = useState("🎬");
   const [isSavingManual, setIsSavingManual] = useState(false);
 
   if (!isOpen) return null;
@@ -40,7 +41,7 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   // Populate sample titles for quick demonstration
   const handleInsertSample = () => {
     setRawInput(
-      `Perfect Spiral\nSolo Leveling\nhttps://www.mangago.me/read-manga/eleceed/\nOmniscient Reader's Viewpoint\nLookism`
+      `Sousou no Frieren\nAttack on Titan Season 4\nSolo Leveling\nPerfect Spiral\nLookism`
     );
     setErrorMessage(null);
   };
@@ -48,7 +49,7 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   // Trigger Metadata extraction
   const handleFetchPreview = async () => {
     if (!rawInput.trim()) {
-      setErrorMessage("Silakan tempel judul, link, atau daftar bookmark komik terlebih dahulu.");
+      setErrorMessage("Silakan tempel judul, link anime/komik terlebih dahulu.");
       return;
     }
 
@@ -57,14 +58,17 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
     setSuccessMessage(null);
 
     try {
-      const res = await previewMangaImport(rawInput);
+      const res = await previewMangaImport(
+        rawInput,
+        typePreference === "Auto" ? undefined : typePreference
+      );
       if (!res.data || res.data.length === 0) {
-        setErrorMessage("Tidak ada judul komik yang terdeteksi dari teks yang Anda tempel.");
+        setErrorMessage("Tidak ada judul anime/komik yang terdeteksi dari teks yang Anda tempel.");
       } else {
         setPreviewItems(res.data);
       }
     } catch (err: any) {
-      setErrorMessage(err.message || "Gagal memproses pratinjau komik.");
+      setErrorMessage(err.message || "Gagal memproses pratinjau judul.");
     } finally {
       setIsPreviewLoading(false);
     }
@@ -85,7 +89,36 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   // Update field on a preview item
   const handleUpdateItemField = (id: string, field: keyof MangaPreviewItem, value: any) => {
     setPreviewItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      prev.map((item) => {
+        if (item.id !== id) return item;
+        const updated = { ...item, [field]: value };
+        // Sync tags if user manually switches type and existing tag was placeholder
+        if (field === "tipe") {
+          if (value === "Anime") {
+            if (
+              updated.tags.length === 0 ||
+              updated.tags.some((t) => t.name.toLowerCase() === "webtoon")
+            ) {
+              updated.tags = [{ name: "Anime" }];
+            }
+          } else if (value === "Manhwa") {
+            if (
+              updated.tags.length === 0 ||
+              updated.tags.some((t) => t.name.toLowerCase() === "anime")
+            ) {
+              updated.tags = [{ name: "Manhwa" }];
+            }
+          } else if (value === "Manga") {
+            if (
+              updated.tags.length === 0 ||
+              updated.tags.some((t) => ["anime", "webtoon"].includes(t.name.toLowerCase()))
+            ) {
+              updated.tags = [{ name: "Manga" }];
+            }
+          }
+        }
+        return updated;
+      })
     );
   };
 
@@ -279,10 +312,10 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
             {/* Input Form Section */}
             {previewItems.length === 0 ? (
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-xs font-medium text-neutral-300 flex items-center gap-1.5">
                     <span>📋</span>
-                    <span>Tempel Daftar Judul atau Link Komik:</span>
+                    <span>Tempel Daftar Judul atau Link Anime / Komik:</span>
                   </label>
                   <button
                     type="button"
@@ -293,17 +326,43 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
                   </button>
                 </div>
 
+                {/* Priority Selector Pills */}
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-[#161616] p-2 rounded-lg border border-[#262626]">
+                  <span className="text-[11px] text-neutral-400">Target Kategori:</span>
+                  <div className="flex items-center gap-1">
+                    {[
+                      { id: "Auto", label: "⚡ Otomatis" },
+                      { id: "Anime", label: "🎬 Prioritas Anime" },
+                      { id: "Manhwa", label: "📖 Manhwa" },
+                      { id: "Manga", label: "📚 Manga" },
+                    ].map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTypePreference(t.id as any)}
+                        className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition cursor-pointer ${
+                          typePreference === t.id
+                            ? "bg-blue-600 text-white shadow-sm font-semibold"
+                            : "text-neutral-400 hover:text-neutral-200 bg-[#202020] hover:bg-[#282828]"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <textarea
                   rows={6}
                   value={rawInput}
                   onChange={(e) => setRawInput(e.target.value)}
-                  placeholder={`Tempel daftar komik dari web mana saja (Mangago, Komikindo, Webtoons, Asura, dll):\n\nSolo Leveling\nOmniscient Reader's Viewpoint\nhttps://www.mangago.me/read-manga/eleceed/\nLookism (Ch. 500)\nThe Beginning After the End`}
+                  placeholder={`Tempel daftar anime atau komik dari web mana saja:\n\nSousou no Frieren\nAttack on Titan Season 4\nSolo Leveling\nhttps://myanimelist.net/anime/52991/Sousou_no_Frieren\nhttps://www.mangago.me/read-manga/eleceed/\nLookism`}
                   className="w-full bg-[#121212] border border-[#2f2f2f] rounded-lg p-3 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 font-mono leading-relaxed resize-none"
                 />
 
                 <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-1">
                   <span>
-                    💡 Tips: Anda bisa paste teks bookmark, link URL komik, atau daftar nama (satu per baris).
+                    💡 Tips: Masukkan nama anime atau judul komik (satu per baris) atau link URL streaming / komik.
                   </span>
                   <button
                     type="button"
@@ -461,17 +520,25 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
                             <option value="On Hold">On Hold</option>
                           </select>
 
-                          {/* Tags Chips */}
-                          <div className="flex items-center gap-1 flex-wrap">
-                            {item.tags.map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="px-1.5 py-0.5 rounded bg-[#262626] text-neutral-300 text-[10px]"
-                              >
-                                {tag.name}
-                              </span>
-                            ))}
-                          </div>
+                        </div>
+
+                        {/* Genre / Tags Quick Edit */}
+                        <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+                          <span className="text-neutral-500 font-mono flex-shrink-0">Genre:</span>
+                          <input
+                            type="text"
+                            value={item.tags.map((t) => t.name).join(", ")}
+                            onChange={(e) => {
+                              const newTags = e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean)
+                                .map((name) => ({ name }));
+                              handleUpdateItemField(item.id, "tags", newTags);
+                            }}
+                            placeholder="Action, Fantasy, Comedy..."
+                            className="flex-1 bg-[#121212] border border-[#2a2a2a] rounded px-1.5 py-0.5 text-neutral-200 placeholder:text-neutral-600 focus:outline-none focus:border-blue-500 text-[10px]"
+                          />
                         </div>
 
                         {/* Cover Image URL Edit Field */}
@@ -576,7 +643,7 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
                 <input
                   type="text"
                   required
-                  placeholder="Contoh: Solo Leveling"
+                  placeholder="Contoh: Sousou no Frieren atau Solo Leveling"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   className="w-full bg-[#141414] border border-[#2f2f2f] rounded-md px-3 py-1.5 text-white placeholder:text-neutral-600 focus:outline-none focus:border-neutral-500"
@@ -589,12 +656,20 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
                 <label className="block text-neutral-400 mb-1">Tipe</label>
                 <select
                   value={tipe}
-                  onChange={(e) => setTipe(e.target.value)}
+                  onChange={(e) => {
+                    const newTipe = e.target.value;
+                    setTipe(newTipe);
+                    if (newTipe === "Anime") {
+                      setIcon("🎬");
+                    } else if (icon === "🎬") {
+                      setIcon("📖");
+                    }
+                  }}
                   className="w-full bg-[#141414] border border-[#2f2f2f] rounded-md px-3 py-1.5 text-white focus:outline-none focus:border-neutral-500"
                 >
+                  <option value="Anime">Anime</option>
                   <option value="Manhwa">Manhwa</option>
                   <option value="Manga">Manga</option>
-                  <option value="Anime">Anime</option>
                   <option value="Manhua">Manhua</option>
                   <option value="Novel">Novel</option>
                 </select>
