@@ -1,0 +1,10 @@
+{
+  "name": "anime-list-notion",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run run-dev.ts",
+    "dev:backend": "bun --cwd backend run dev",
+    "dev:frontend": "bun --cwd frontend run dev"
+  }
+}

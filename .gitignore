@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Environment variables (Sangat penting: Jangan commit file rahasia ini!)
+.env
+.env.*
+*.env
+!*.env.example
+
+# Build outputs
+/build
+/dist
+/.react-router
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
