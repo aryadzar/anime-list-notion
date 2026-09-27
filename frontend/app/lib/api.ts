@@ -23,13 +23,14 @@ export async function fetchNotionItems(): Promise<ApiResponse<NotionItem[]>> {
       if (res.status === 401 || res.status === 403) {
         throw new Error(errJson.message || "Sesi Anda telah kedaluwarsa atau akses ditolak. Silakan login kembali.");
       }
-      // Try direct localhost:3001 if proxy failed
-      const directRes = await fetch("http://127.0.0.1:3001/api/items", { headers });
-      if (!directRes.ok) {
-        const directErr = await directRes.json().catch(() => ({}));
-        throw new Error(directErr.message || `HTTP error! status: ${res.status}`);
+      // Try direct 127.0.0.1:3001 only during local development if proxy is unreachable
+      if (import.meta.env.DEV) {
+        const directRes = await fetch("http://127.0.0.1:3001/api/items", { headers });
+        if (directRes.ok) {
+          return await directRes.json();
+        }
       }
-      return await directRes.json();
+      throw new Error(errJson.message || `HTTP error! status: ${res.status}`);
     }
     return await res.json();
   } catch (error) {
@@ -41,22 +42,28 @@ export async function fetchBackendStatus(): Promise<BackendStatus> {
   try {
     const res = await fetch(`${API_BASE}/status`, { credentials: "include" });
     if (!res.ok) {
-      const directRes = await fetch("http://127.0.0.1:3001/api/status");
-      return await directRes.json();
+      if (import.meta.env.DEV) {
+        const directRes = await fetch("http://127.0.0.1:3001/api/status");
+        if (directRes.ok) return await directRes.json();
+      }
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message);
     }
     return await res.json();
-  } catch (error) {
-    try {
-      const directRes = await fetch("http://127.0.0.1:3001/api/status");
-      if (directRes.ok) {
-        return await directRes.json();
-      }
-    } catch (_) {}
+  } catch (error: any) {
+    if (import.meta.env.DEV) {
+      try {
+        const directRes = await fetch("http://127.0.0.1:3001/api/status");
+        if (directRes.ok) {
+          return await directRes.json();
+        }
+      } catch (_) {}
+    }
     return {
       isConfigured: false,
       hasKey: false,
       hasDatabaseId: false,
-      message: "Tidak dapat terhubung ke backend server (http://localhost:3001).",
+      message: error?.message || "Tidak dapat terhubung ke backend server.",
     };
   }
 }
