@@ -387,12 +387,15 @@ const app = new Elysia()
         items: t.Array(t.Any()),
       }),
     }
-  )
-  .listen(PORT);
+  );
 
-console.log(
-  `🦊 Elysia backend is running at http://${app.server?.hostname || "localhost"}:${app.server?.port || PORT}`
-);
-console.log(`🔒 Authentication active: Only '${ALLOWED_EMAIL}' is granted access.`);
+// Only listen on TCP port in standalone / local development (Vercel Serverless handles execution automatically)
+if (!process.env.VERCEL) {
+  app.listen(PORT);
+  console.log(
+    `🦊 Elysia backend is running at http://${app.server?.hostname || "localhost"}:${app.server?.port || PORT}`
+  );
+  console.log(`🔒 Authentication active: Only '${ALLOWED_EMAIL}' is granted access.`);
+}
 
 export default app;
