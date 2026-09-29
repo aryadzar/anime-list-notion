@@ -306,16 +306,16 @@ export function StatsView({ items, onSelectItem, onOpenNewModal }: StatsViewProp
             </div>
           </div>
 
-          {/* Card 3: Total Chapters Read */}
+          {/* Card 3: Total Reading Estimation */}
           <div className="bg-[#18181f]/80 border border-[#2a2738] rounded-xl p-4 flex flex-col justify-between">
             <span className="text-[11px] text-neutral-400 font-medium flex items-center gap-1.5">
-              <span>📖</span> Estimasi Chapter Dibaca
+              <span>📖</span> Estimasi Volume Terbaca
             </span>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-2xl sm:text-3xl font-bold text-blue-400 tracking-tight font-mono">
                 {consumptionStats.totalChapters.toLocaleString("id-ID")}
               </span>
-              <span className="text-xs text-neutral-500">Bab/Ch</span>
+              <span className="text-xs text-neutral-500">Panel/Vol</span>
             </div>
             <span className="text-[10px] text-neutral-400 mt-2">
               ≈ {consumptionStats.readingHours} jam total waktu membaca
@@ -592,10 +592,10 @@ export function StatsView({ items, onSelectItem, onOpenNewModal }: StatsViewProp
         <div className="bg-[#161618] border border-[#26262a] rounded-2xl p-5 shadow-lg flex flex-col justify-between">
           <div>
             <h2 className="text-sm font-semibold text-white tracking-wide flex items-center gap-2 mb-1">
-              <span>⚡</span> Konsumsi Waktu &amp; Bab
+              <span>⚡</span> Konsumsi Waktu &amp; Media
             </h2>
             <p className="text-[11px] text-neutral-400 leading-relaxed mb-4">
-              Estimasi total jam yang dihabiskan berdasarkan chapter komik dan episode anime yang telah diselesaikan.
+              Estimasi total jam yang dihabiskan berdasarkan progres membaca komik dan episode anime yang telah diselesaikan.
             </p>
 
             <div className="space-y-3">
@@ -620,7 +620,7 @@ export function StatsView({ items, onSelectItem, onOpenNewModal }: StatsViewProp
                   <div>
                     <span className="text-xs font-medium text-white block">Komik &amp; Manga</span>
                     <span className="text-[10px] text-neutral-400">
-                      {consumptionStats.totalChapters.toLocaleString("id-ID")} chapter terbaca
+                      {consumptionStats.totalChapters.toLocaleString("id-ID")} panel terbaca
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { jwt } from "@elysiajs/jwt";
-import { fetchNotionItems, createNotionPage, createNotionPagesBatch } from "./notion";
+import { fetchNotionItems, createNotionPage, createNotionPagesBatch, updateNotionPageStatus } from "./notion";
 import { ALLOWED_EMAIL, decodeGoogleIdToken, verifyGoogleTokenWithApi } from "./auth";
 import { generateMangaPreview } from "./mangaEnricher";
 
@@ -34,7 +34,7 @@ const app = new Elysia()
   .use(
     cors({
       origin: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true,
     })
   )
@@ -151,47 +151,65 @@ const app = new Elysia()
     return { success: true, message: "Sesi logout berhasil." };
   })
 
-  // Dev Quick Login (untuk kemudahan testing sebelum Google Client ID disetel)
-  // .post(
-  //   "/api/auth/dev-login",
-  //   async ({ body, jwt, set }) => {
-  //     const { email } = body as { email?: string };
-  //     const targetEmail = (email || ALLOWED_EMAIL).toLowerCase().trim();
+  // Dev Quick Login (untuk kemudahan testing via HP / local network)
+  .post(
+    "/api/auth/dev-login",
+    async ({ body, jwt, cookie: { auth_token }, set }) => {
+      // Tolak jika sedang berjalan di mode production
+      if (process.env.NODE_ENV === "production") {
+        set.status = 403;
+        return {
+          success: false,
+          isBlocked: true,
+          message: "Akses masuk cepat (dev-login) dinonaktifkan di mode production.",
+        };
+      }
 
-  //     // Strict check: if email is not allowed, reject with 403!
-  //     if (targetEmail !== ALLOWED_EMAIL) {
-  //       set.status = 403;
-  //       return {
-  //         success: false,
-  //         isBlocked: true,
-  //         message: `Akses ditolak: Akun '${targetEmail}' tidak memiliki izin. Hanya pemilik (${ALLOWED_EMAIL}) yang dapat masuk ke vault ini.`,
-  //       };
-  //     }
+      const { email } = (body || {}) as { email?: string };
+      const targetEmail = (email || ALLOWED_EMAIL).toLowerCase().trim();
 
-  //     const sessionToken = await jwt.sign({
-  //       email: ALLOWED_EMAIL,
-  //       name: "Arya Dzaky",
-  //       picture: "https://lh3.googleusercontent.com/aida-public/AB6AXuDixMSYgCrD8QKhI1_qtBAQMD3PXlJzP8Kd5dNYfebZydA37Q7zDlF-JaHb2lnXupXz-xKq_Ja8JV8YoB0CO0emQwqxLrLaoK8SjCQ8u_Fsvwvmz6AGRYWYt87uI-bNLQYM9kJVKEndVV5hIoM3HdAxnoxCrBDFsSyb1qV5RsS-U-T9CtcdiiRmWXgz-G4-d_w93ruZrra5yfjChTtwhe3JyPczT4dEAsMqhYMRVbBPiT__6t3wdTW7OLZEgVehcVIh9Es",
-  //     });
+      // Strict check: if email is not allowed, reject with 403!
+      if (targetEmail !== ALLOWED_EMAIL) {
+        set.status = 403;
+        return {
+          success: false,
+          isBlocked: true,
+          message: `Akses ditolak: Akun '${targetEmail}' tidak memiliki izin. Hanya pemilik (${ALLOWED_EMAIL}) yang dapat masuk ke vault ini.`,
+        };
+      }
 
-  //     return {
-  //       success: true,
-  //       token: sessionToken,
-  //       user: {
-  //         email: ALLOWED_EMAIL,
-  //         name: "Arya Dzaky",
-  //         picture: "",
-  //       },
-  //     };
-  //   },
-  //   {
-  //     body: t.Optional(
-  //       t.Object({
-  //         email: t.Optional(t.String()),
-  //       })
-  //     ),
-  //   }
-  // )
+      const sessionToken = await jwt.sign({
+        email: ALLOWED_EMAIL,
+        name: "Arya Dzaky",
+        picture: "https://lh3.googleusercontent.com/aida-public/AB6AXuDixMSYgCrD8QKhI1_qtBAQMD3PXlJzP8Kd5dNYfebZydA37Q7zDlF-JaHb2lnXupXz-xKq_Ja8JV8YoB0CO0emQwqxLrLaoK8SjCQ8u_Fsvwvmz6AGRYWYt87uI-bNLQYM9kJVKEndVV5hIoM3HdAxnoxCrBDFsSyb1qV5RsS-U-T9CtcdiiRmWXgz-G4-d_w93ruZrra5yfjChTtwhe3JyPczT4dEAsMqhYMRVbBPiT__6t3wdTW7OLZEgVehcVIh9Es",
+      });
+
+      auth_token.set({
+        value: sessionToken,
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60,
+        path: "/",
+        sameSite: "lax",
+      });
+
+      return {
+        success: true,
+        token: sessionToken,
+        user: {
+          email: ALLOWED_EMAIL,
+          name: "Arya Dzaky",
+          picture: "",
+        },
+      };
+    },
+    {
+      body: t.Optional(
+        t.Object({
+          email: t.Optional(t.String()),
+        })
+      ),
+    }
+  )
 
   // Get current user profile
   .get("/api/auth/me", async ({ headers, cookie: { auth_token }, jwt, set }) => {
@@ -388,11 +406,50 @@ const app = new Elysia()
         items: t.Array(t.Any()),
       }),
     }
+  )
+
+  // Update item status in Notion (Protected)
+  .patch(
+    "/api/items/:id",
+    async ({ params, body, headers, cookie: { auth_token }, jwt, set }) => {
+      const auth = await verifyAuth(headers, auth_token, jwt, set);
+      if (!auth.ok) return { success: false, message: auth.error };
+
+      const { status } = body as { status?: string };
+      if (!status) {
+        set.status = 400;
+        return { success: false, message: "Field 'status' wajib diisi." };
+      }
+
+      try {
+        console.log(`[NOTION] Mengubah status item ${params.id} menjadi "${status}"...`);
+        const updatedItem = await updateNotionPageStatus(params.id, status);
+        return {
+          success: true,
+          message: `Status berhasil diubah menjadi "${status}".`,
+          data: updatedItem,
+        };
+      } catch (err: any) {
+        set.status = 500;
+        return {
+          success: false,
+          message: err?.message || "Gagal mengubah status di Notion.",
+        };
+      }
+    },
+    {
+      body: t.Object({
+        status: t.String(),
+      }),
+    }
   );
 
 // Only listen on TCP port in standalone / local development (Vercel Serverless handles execution automatically)
 if (!process.env.VERCEL) {
-  app.listen(PORT);
+  app.listen({
+    port: PORT,
+    hostname: "0.0.0.0",
+  });
   console.log(
     `🦊 Elysia backend is running at http://${app.server?.hostname || "localhost"}:${app.server?.port || PORT}`
   );

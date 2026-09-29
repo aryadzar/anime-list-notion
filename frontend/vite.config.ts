@@ -8,6 +8,8 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   server: {
+    host: "0.0.0.0", // Mengizinkan akses dari HP & perangkat lain di jaringan Wi-Fi lokal
+    port: 5173,
     proxy: {
       "/api": {
         target: "http://127.0.0.1:3001",

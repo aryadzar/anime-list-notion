@@ -8,8 +8,8 @@ export function GuideModal({ isOpen, onClose, isMock }: GuideModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-[#1c1c1c] border border-[#2f2f2f] rounded-xl max-w-lg w-full p-6 shadow-2xl relative">
+    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md anim-backdrop flex items-center justify-center p-4">
+      <div className="bg-[#1c1c1c] border border-[#2f2f2f] rounded-xl max-w-lg w-full p-6 shadow-2xl relative anim-modal-spring">
         <button
           onClick={onClose}
           className="absolute right-4 top-4 text-neutral-400 hover:text-white p-1 rounded hover:bg-[#282828] transition"

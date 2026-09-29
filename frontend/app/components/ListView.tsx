@@ -1,11 +1,13 @@
 import type { NotionItem } from "../types/notion";
-import { getStatusBadgeClass, getTipeBadgeClass, formatDate } from "../lib/utils";
+import { NotionStatusSelect } from "./NotionStatusSelect";
+import { getTipeBadgeClass, formatDate } from "../lib/utils";
 
 interface ListViewProps {
   items: NotionItem[];
   selectedItem: NotionItem | null;
   onSelectItem: (item: NotionItem) => void;
   onOpenNewModal: () => void;
+  onItemStatusChange?: (itemId: string, newStatus: string) => void;
 }
 
 export function ListView({
@@ -13,6 +15,7 @@ export function ListView({
   selectedItem,
   onSelectItem,
   onOpenNewModal,
+  onItemStatusChange,
 }: ListViewProps) {
   return (
     <div className="flex-1 overflow-y-auto space-y-1 pr-1">
@@ -47,9 +50,15 @@ export function ListView({
               <span className={`${getTipeBadgeClass(item.tipe)} notion-tag text-[10px]`}>
                 {item.tipe}
               </span>
-              <span className={`${getStatusBadgeClass(item.status)} notion-tag text-[10px]`}>
-                {item.status}
-              </span>
+              <NotionStatusSelect
+                itemId={item.id}
+                currentStatus={item.status}
+                size="sm"
+                onStatusChange={(newStatus) => {
+                  item.status = newStatus;
+                  if (onItemStatusChange) onItemStatusChange(item.id, newStatus);
+                }}
+              />
               <span className="text-neutral-500 font-mono text-[11px] hidden sm:inline">
                 {formatDate(item.lastEditedTime)}
               </span>

@@ -14,6 +14,9 @@ import { GuideModal } from "../components/GuideModal";
 import { NewEntryModal } from "../components/NewEntryModal";
 import { useAuth } from "../context/AuthContext";
 import { LoginPage } from "../components/LoginPage";
+import { useLayout } from "../context/LayoutContext";
+import { MobileLayout } from "../components/mobile/MobileLayout";
+import { TrackLinkModal } from "../components/TrackLinkModal";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -27,6 +30,13 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   const { isAuthenticated, isLoading: isAuthLoading, logout } = useAuth();
+  const {
+    isMobileView,
+    isTrackLinkOpen,
+    trackLinkInitialUrl,
+    openTrackLink,
+    closeTrackLink,
+  } = useLayout();
 
   // React Router URL Search Parameters
   const [searchParams, setSearchParams] = useSearchParams();
@@ -64,11 +74,40 @@ export default function Home() {
   // Local additions
   const [localAddedItems, setLocalAddedItems] = useState<NotionItem[]>([]);
 
-  // Base items
+  // Local status overrides for immediate reactive state reflection across views
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
+
+  const handleItemStatusChange = useCallback((itemId: string, newStatus: string) => {
+    const norm = itemId.replace(/-/g, "").toLowerCase();
+    setStatusOverrides((prev) => ({
+      ...prev,
+      [norm]: newStatus,
+      [itemId]: newStatus,
+    }));
+
+    setLocalAddedItems((prev) =>
+      prev.map((it) => {
+        const itemNorm = it.id.replace(/-/g, "").toLowerCase();
+        return it.id === itemId || itemNorm === norm
+          ? { ...it, status: newStatus }
+          : it;
+      })
+    );
+  }, []);
+
+  // Base items with reactive status overrides
   const rawItems = useMemo(() => {
     const serverItems = data?.data || [];
-    return [...localAddedItems, ...serverItems];
-  }, [data?.data, localAddedItems]);
+    const combined = [...localAddedItems, ...serverItems];
+    return combined.map((it) => {
+      const norm = it.id.replace(/-/g, "").toLowerCase();
+      const override = statusOverrides[norm] || statusOverrides[it.id];
+      if (override && override !== it.status) {
+        return { ...it, status: override };
+      }
+      return it;
+    });
+  }, [data?.data, localAddedItems, statusOverrides]);
 
   // Helper to update URL search parameters cleanly
   const updateParams = useCallback(
@@ -222,6 +261,44 @@ export default function Home() {
   }
 
   const isMock = data?.isMock ?? true;
+
+  if (isMobileView) {
+    return (
+      <div className="fixed inset-0 h-full h-dvh w-full flex flex-col bg-[#121212] overflow-hidden">
+        <MobileLayout
+          items={rawItems}
+          isLoading={isLoading}
+          onRefresh={() => refetch()}
+          isRefetching={isRefetching}
+          onItemStatusChange={handleItemStatusChange}
+        />
+
+        {/* Global Track Link Modal */}
+        <TrackLinkModal
+          isOpen={isTrackLinkOpen}
+          onClose={closeTrackLink}
+          initialUrl={trackLinkInitialUrl}
+          onItemAdded={handleAddNewItem}
+          onRefresh={() => refetch()}
+        />
+
+        {/* New Entry Modal */}
+        <NewEntryModal
+          isOpen={isNewModalOpen}
+          onClose={() => setIsNewModalOpen(false)}
+          onAddNewItem={handleAddNewItem}
+          onRefresh={() => refetch()}
+        />
+
+        {/* Guide Modal */}
+        <GuideModal
+          isOpen={isGuideModalOpen}
+          onClose={() => setIsGuideModalOpen(false)}
+          isMock={isMock}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen h-dvh flex flex-col bg-[#121212] text-[#e3e2de] overflow-hidden">
@@ -412,6 +489,7 @@ export default function Home() {
                         selectedItem={activeItem}
                         onSelectItem={handleSelectItem}
                         onOpenNewModal={() => setIsNewModalOpen(true)}
+                        onItemStatusChange={handleItemStatusChange}
                       />
                     )}
 
@@ -421,6 +499,7 @@ export default function Home() {
                         selectedItem={activeItem}
                         onSelectItem={handleSelectItem}
                         onOpenNewModal={() => setIsNewModalOpen(true)}
+                        onItemStatusChange={handleItemStatusChange}
                       />
                     )}
 
@@ -430,6 +509,7 @@ export default function Home() {
                         selectedItem={activeItem}
                         onSelectItem={handleSelectItem}
                         onOpenNewModal={() => setIsNewModalOpen(true)}
+                        onItemStatusChange={handleItemStatusChange}
                       />
                     )}
                   </>
@@ -447,6 +527,7 @@ export default function Home() {
           isFullPage={isFullPage}
           onToggleFullPage={() => setIsFullPage(!isFullPage)}
           isMock={isMock}
+          onItemStatusChange={handleItemStatusChange}
         />
         {/* END: Notion Property Inspection Drawer */}
       </main>
@@ -464,6 +545,27 @@ export default function Home() {
         isOpen={isNewModalOpen}
         onClose={() => setIsNewModalOpen(false)}
         onAddNewItem={handleAddNewItem}
+        onRefresh={() => refetch()}
+      />
+
+      {/* Floating Track Link Button for Desktop Web View */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => openTrackLink()}
+          className="bg-[#F5C518] hover:bg-[#E5B508] active:scale-95 text-[#171717] font-extrabold text-xs px-4 py-2.5 rounded-full shadow-2xl border border-[#DDB000] flex items-center gap-2 transition cursor-pointer font-mono tracking-wider"
+          title="Track Link Komik / Anime via URL (Share Target)"
+        >
+          <span className="text-base">⚡</span>
+          <span>TRACK LINK</span>
+        </button>
+      </div>
+
+      {/* Global Track Link Modal */}
+      <TrackLinkModal
+        isOpen={isTrackLinkOpen}
+        onClose={closeTrackLink}
+        initialUrl={trackLinkInitialUrl}
+        onItemAdded={handleAddNewItem}
         onRefresh={() => refetch()}
       />
     </div>

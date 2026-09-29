@@ -141,3 +141,57 @@ export async function createNotionItemsBatch(
   return await res.json();
 }
 
+// Update status of an existing item in Notion
+export async function updateItemStatus(
+  id: string,
+  status: string
+): Promise<{ success: boolean; message: string; data?: NotionItem }> {
+  const headers = {
+    ...getAuthHeaders(),
+    "Content-Type": "application/json",
+  };
+
+  try {
+    const res = await fetch(`${API_BASE}/items/${id}`, {
+      method: "PATCH",
+      headers,
+      credentials: "include",
+      body: JSON.stringify({ status }),
+    });
+
+    if (!res.ok) {
+      if (import.meta.env.DEV) {
+        const directRes = await fetch(`http://127.0.0.1:3001/api/items/${id}`, {
+          method: "PATCH",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({ status }),
+        });
+        if (directRes.ok) {
+          return await directRes.json();
+        }
+      }
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Gagal mengubah status: HTTP ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (error: any) {
+    if (import.meta.env.DEV) {
+      try {
+        const directRes = await fetch(`http://127.0.0.1:3001/api/items/${id}`, {
+          method: "PATCH",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({ status }),
+        });
+        if (directRes.ok) {
+          return await directRes.json();
+        }
+      } catch (_) {}
+    }
+    throw error;
+  }
+}
+
+

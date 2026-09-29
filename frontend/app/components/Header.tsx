@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useLayout } from "../context/LayoutContext";
 
 interface HeaderProps {
   searchQuery: string;
@@ -33,6 +34,7 @@ export function Header({
   onOpenGuideModal,
 }: HeaderProps) {
   const { user, logout } = useAuth();
+  const { layoutMode, setLayoutMode, openTrackLink } = useLayout();
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [showSortMenu, setShowSortMenu] = useState(false);
 
@@ -275,10 +277,48 @@ export function Header({
           )}
         </div>
 
+        {/* Track Link (Share Target) Button */}
+        <button
+          onClick={() => openTrackLink()}
+          className="bg-[#F5C518] hover:bg-[#E5B508] text-black font-extrabold px-3 py-1.5 rounded-md flex items-center space-x-1.5 transition shadow-sm font-mono cursor-pointer shrink-0"
+          title="Track Link Komik / Anime via URL (Share Target)"
+        >
+          <span>⚡</span>
+          <span>Track Link</span>
+        </button>
+
+        {/* Layout Switcher (Web vs Mobile) */}
+        <div className="flex items-center bg-[#202020] border border-[#2e2e2e] rounded-md p-0.5 shrink-0">
+          <button
+            onClick={() => setLayoutMode("web")}
+            className={`px-2 py-1 rounded text-[11px] font-mono transition cursor-pointer flex items-center gap-1 ${
+              layoutMode === "web"
+                ? "bg-[#2f2f2f] text-white font-bold"
+                : "text-neutral-400 hover:text-white"
+            }`}
+            title="Mode Web (Notion Database Desktop)"
+          >
+            <span>💻</span>
+            <span className="hidden md:inline">Web</span>
+          </button>
+          <button
+            onClick={() => setLayoutMode("mobile")}
+            className={`px-2 py-1 rounded text-[11px] font-mono transition cursor-pointer flex items-center gap-1 ${
+              layoutMode === "mobile"
+                ? "bg-[#F5C518] text-black font-bold"
+                : "text-neutral-400 hover:text-white"
+            }`}
+            title="Mode Mobile (Image 6 & 3 Warm App)"
+          >
+            <span>📱</span>
+            <span className="hidden md:inline">Mobile</span>
+          </button>
+        </div>
+
         {/* "+ Baru" Button */}
         <button
           onClick={onOpenNewModal}
-          className="bg-neutral-100 hover:bg-white text-black font-semibold px-3 py-1.5 rounded-md flex items-center space-x-1 transition shadow-sm"
+          className="bg-neutral-100 hover:bg-white text-black font-semibold px-3 py-1.5 rounded-md flex items-center space-x-1 transition shadow-sm shrink-0 cursor-pointer"
         >
           <span>Baru</span>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

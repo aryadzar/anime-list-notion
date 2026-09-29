@@ -22,6 +22,7 @@ interface AuthContextType {
   authError: string | null;
   setAuthError: (err: string | null) => void;
   loginWithGoogleCredential: (credential: string) => Promise<{ success: boolean; message?: string }>;
+  loginDevSession: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 }
 
@@ -162,6 +163,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const loginDevSession = useCallback(async () => {
+    // Hanya izinkan pada mode development
+    if (!import.meta.env.DEV) {
+      const errorMsg = "Akses masuk cepat hanya tersedia ketika mode development.";
+      setAuthError(errorMsg);
+      return { success: false, message: errorMsg };
+    }
+
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/auth/dev-login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+      } catch (_) {
+        res = await fetch("http://localhost:3001/api/auth/dev-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+        });
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        const errorMsg = data.message || "Gagal masuk mode pengembang.";
+        setAuthError(errorMsg);
+        setIsLoading(false);
+        return { success: false, message: errorMsg };
+      }
+
+      setToken(data.token);
+      setUser(data.user);
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+      setIsLoading(false);
+      return { success: true };
+    } catch (err: any) {
+      const errorMsg = err.message || "Gagal menghubungi backend server.";
+      setAuthError(errorMsg);
+      setIsLoading(false);
+      return { success: false, message: errorMsg };
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -172,6 +221,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authError,
         setAuthError,
         loginWithGoogleCredential,
+        loginDevSession,
         logout,
       }}
     >

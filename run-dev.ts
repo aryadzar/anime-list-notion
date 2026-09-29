@@ -1,12 +1,28 @@
 import { spawn } from "bun";
+import os from "node:os";
 
 const bunPath = process.execPath || "bun";
+
+function getLocalIp(): string {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name] || []) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return "localhost";
+}
+
+const localIp = getLocalIp();
 
 console.log("\x1b[36m%s\x1b[0m", "==================================================");
 console.log("\x1b[36m%s\x1b[0m", "  🚀 Memulai Backend & Frontend (Notion Tracker) ");
 console.log("\x1b[36m%s\x1b[0m", "==================================================");
-console.log("  Backend  : http://localhost:3001");
-console.log("  Frontend : http://localhost:5173");
+console.log("  💻 Local PC : http://localhost:5173");
+console.log(`  📱 HP (Wi-Fi): \x1b[32mhttp://${localIp}:5173\x1b[0m`);
+console.log("  ⚙️  Backend  : http://localhost:3001");
 console.log("  Tekan Ctrl+C untuk menghentikan kedua server.");
 console.log("--------------------------------------------------\n");
 

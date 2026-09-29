@@ -1,4 +1,5 @@
 import type { NotionItem } from "../types/notion";
+import { NotionStatusSelect } from "./NotionStatusSelect";
 import { getStatusBadgeClass, getTipeBadgeClass, getTagBadgeClass } from "../lib/utils";
 
 interface GalleryViewProps {
@@ -6,6 +7,7 @@ interface GalleryViewProps {
   selectedItem: NotionItem | null;
   onSelectItem: (item: NotionItem) => void;
   onOpenNewModal: () => void;
+  onItemStatusChange?: (itemId: string, newStatus: string) => void;
 }
 
 export function GalleryView({
@@ -13,6 +15,7 @@ export function GalleryView({
   selectedItem,
   onSelectItem,
   onOpenNewModal,
+  onItemStatusChange,
 }: GalleryViewProps) {
   return (
     <div className="flex-1 overflow-y-auto pr-1">
@@ -47,11 +50,17 @@ export function GalleryView({
                     </span>
                   </div>
                 )}
-                {/* Status chip over cover */}
+                {/* Status chip over cover (Notion Interactive Select) */}
                 <div className="absolute top-2 right-2">
-                  <span className={`${getStatusBadgeClass(item.status)} notion-tag text-[10px] shadow`}>
-                    {item.status}
-                  </span>
+                  <NotionStatusSelect
+                    itemId={item.id}
+                    currentStatus={item.status}
+                    size="sm"
+                    onStatusChange={(newStatus) => {
+                      item.status = newStatus;
+                      if (onItemStatusChange) onItemStatusChange(item.id, newStatus);
+                    }}
+                  />
                 </div>
               </div>
 

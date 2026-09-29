@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { NotionItem } from "../types/notion";
+import { NotionStatusSelect } from "./NotionStatusSelect";
 import {
   formatFullDate,
   getStatusBadgeClass,
@@ -14,6 +15,7 @@ interface ItemDrawerProps {
   isFullPage: boolean;
   onToggleFullPage: () => void;
   isMock: boolean;
+  onItemStatusChange?: (itemId: string, newStatus: string) => void;
 }
 
 export function ItemDrawer({
@@ -23,6 +25,7 @@ export function ItemDrawer({
   isFullPage,
   onToggleFullPage,
   isMock,
+  onItemStatusChange,
 }: ItemDrawerProps) {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<
@@ -249,7 +252,7 @@ export function ItemDrawer({
             <div className="text-neutral-500">Empty</div>
           </div>
 
-          {/* Property: Status */}
+          {/* Property: Status (Notion Interactive Select) */}
           <div className="grid grid-cols-[130px_1fr] items-center py-1 border-b border-[#222222]/60">
             <div className="flex items-center space-x-2 text-neutral-400">
               <svg className="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -259,9 +262,14 @@ export function ItemDrawer({
               <span>Status</span>
             </div>
             <div>
-              <span className={`${getStatusBadgeClass(item.status)} notion-tag`}>
-                {item.status}
-              </span>
+              <NotionStatusSelect
+                itemId={item.id}
+                currentStatus={item.status}
+                onStatusChange={(newStatus) => {
+                  item.status = newStatus;
+                  if (onItemStatusChange) onItemStatusChange(item.id, newStatus);
+                }}
+              />
             </div>
           </div>
 

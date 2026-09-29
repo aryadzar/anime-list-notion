@@ -1,4 +1,5 @@
 import type { NotionItem } from "../types/notion";
+import { NotionStatusSelect } from "./NotionStatusSelect";
 import {
   formatDate,
   getStatusBadgeClass,
@@ -12,6 +13,7 @@ interface TableViewProps {
   selectedItem: NotionItem | null;
   onSelectItem: (item: NotionItem) => void;
   onOpenNewModal: () => void;
+  onItemStatusChange?: (itemId: string, newStatus: string) => void;
 }
 
 export function TableView({
@@ -19,6 +21,7 @@ export function TableView({
   selectedItem,
   onSelectItem,
   onOpenNewModal,
+  onItemStatusChange,
 }: TableViewProps) {
   // Compute footer statistics
   const totalCount = items.length;
@@ -170,11 +173,17 @@ export function TableView({
                   )}
                 </td>
 
-                {/* Status */}
+                {/* Status (Notion Interactive Select) */}
                 <td className="py-2 px-3 border-r border-[#262626]">
-                  <span className={`${getStatusBadgeClass(item.status)} notion-tag text-[10px]`}>
-                    {item.status}
-                  </span>
+                  <NotionStatusSelect
+                    itemId={item.id}
+                    currentStatus={item.status}
+                    size="sm"
+                    onStatusChange={(newStatus) => {
+                      item.status = newStatus;
+                      if (onItemStatusChange) onItemStatusChange(item.id, newStatus);
+                    }}
+                  />
                 </td>
 
                 {/* Tipe */}

@@ -13,6 +13,10 @@ import { Providers } from "./providers";
 
 export const links: Route.LinksFunction = () => [
   {
+    rel: "manifest",
+    href: "/manifest.webmanifest",
+  },
+  {
     rel: "icon",
     type: "image/svg+xml",
     href: "/favicon.svg?v=2",
@@ -31,19 +35,36 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className="dark">
+    <html lang="id" className="dark h-full w-full overflow-hidden">
       <head>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+        <meta name="theme-color" content="#FAF8F5" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Vault Tracker" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2" />
         <Meta />
         <Links />
         <script src="https://accounts.google.com/gsi/client" async defer></script>
       </head>
-      <body className="bg-[#121212] text-[#e3e2de] antialiased min-h-screen flex flex-col font-sans selection:bg-[#333333] selection:text-white">
+      <body className="bg-[#121212] text-[#e3e2de] antialiased h-full h-dvh w-full overflow-hidden flex flex-col font-sans selection:bg-[#333333] selection:text-white">
         {children}
         <ScrollRestoration />
         <Scripts />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                    console.log('SW registration skipped:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

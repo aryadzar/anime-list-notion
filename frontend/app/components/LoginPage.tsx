@@ -5,10 +5,21 @@ const GOOGLE_CLIENT_ID =
   import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 export function LoginPage() {
-  const { loginWithGoogleCredential, authError, setAuthError } = useAuth();
+  const { loginWithGoogleCredential, loginDevSession, authError, setAuthError } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(authError);
   const [isProcessing, setIsProcessing] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  const handleDevLogin = async () => {
+    setIsProcessing(true);
+    setErrorMessage(null);
+    setAuthError(null);
+    const res = await loginDevSession();
+    if (!res.success) {
+      setErrorMessage(res.message || "Gagal masuk via dev login.");
+    }
+    setIsProcessing(false);
+  };
 
   // Sync authError from context
   useEffect(() => {
@@ -174,6 +185,22 @@ export function LoginPage() {
             }`}
           />
         </div>
+
+        {/* Quick Dev/LAN Login Button - Hanya tampil saat Mode Development */}
+        {import.meta.env.DEV && (
+          <div className="pt-3 border-t border-[#262626] text-center">
+            <button
+              type="button"
+              onClick={handleDevLogin}
+              disabled={isProcessing}
+              className="text-[11px] text-neutral-400 hover:text-amber-400 underline transition cursor-pointer flex items-center justify-center gap-1.5 mx-auto font-mono py-1"
+              title="Akses masuk cepat hanya tersedia ketika mode development"
+            >
+              <span>⚡</span>
+              <span>Masuk Cepat (Development Only)</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Page Footer */}

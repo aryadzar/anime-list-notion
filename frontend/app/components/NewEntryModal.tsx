@@ -234,8 +234,8 @@ export function NewEntryModal({ isOpen, onClose, onAddNewItem, onRefresh }: NewE
   const selectedCount = previewItems.filter((i) => i.selected).length;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-[#181818] border border-[#2e2e2e] rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md anim-backdrop flex items-center justify-center p-3 sm:p-4">
+      <div className="bg-[#181818] border border-[#2e2e2e] rounded-xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden anim-modal-spring">
         {/* Modal Top Bar */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#282828] bg-[#1d1d1d]/80">
           <div className="flex items-center space-x-3">

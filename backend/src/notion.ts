@@ -625,10 +625,79 @@ export async function createNotionPagesBatch(
     }
   }
 
-  return {
+    return {
     success: created.length > 0,
     created,
     errors,
   };
 }
+
+export async function updateNotionPageStatus(
+  pageId: string,
+  newStatus: string
+): Promise<any> {
+  const apiKey = process.env.NOTION_API_KEY?.trim();
+  if (!apiKey || pageId.startsWith("mock-") || pageId.startsWith("MN-")) {
+    const mock = MOCK_ITEMS.find((m) => m.id === pageId);
+    if (mock) {
+      mock.status = newStatus;
+      return mock;
+    }
+    return {
+      id: pageId,
+      status: newStatus,
+    };
+  }
+
+  const cleanId = pageId.replace(/-/g, "");
+
+  // Try updating with select property type first
+  let res = await fetch(`https://api.notion.com/v1/pages/${cleanId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Notion-Version": "2022-06-28",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      properties: {
+        Status: {
+          select: {
+            name: newStatus,
+          },
+        },
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    // If database uses Notion's native "status" type rather than "select"
+    res = await fetch(`https://api.notion.com/v1/pages/${cleanId}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Notion-Version": "2022-06-28",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        properties: {
+          Status: {
+            status: {
+              name: newStatus,
+            },
+          },
+        },
+      }),
+    });
+  }
+
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as any;
+    throw new Error(err.message || `Gagal update status di Notion: HTTP ${res.status}`);
+  }
+
+  const page = await res.json();
+  return parseNotionPage(page);
+}
+
 
