@@ -529,8 +529,9 @@ export async function createNotionPage(payload: any): Promise<NotionItem> {
 
   // Upload image to Notion internal storage if a cover URL is provided
   let fileUploadId: string | null = null;
-  if (payload.cover?.trim()) {
-    fileUploadId = await uploadFileToNotion(apiKey, payload.cover.trim(), payload.title || "cover");
+  const rawCover = (payload.cover || payload.coverUrl)?.trim();
+  if (rawCover) {
+    fileUploadId = await uploadFileToNotion(apiKey, rawCover, payload.title || "cover");
 
     if (fileUploadId) {
       // 1. Direct Notion internal file upload (stored in Notion's AWS S3 bucket)
@@ -552,7 +553,7 @@ export async function createNotionPage(payload: any): Promise<NotionItem> {
             name: "Cover",
             type: "external",
             external: {
-              url: payload.cover.trim(),
+              url: rawCover,
             },
           },
         ],
@@ -577,12 +578,12 @@ export async function createNotionPage(payload: any): Promise<NotionItem> {
         id: fileUploadId,
       },
     };
-  } else if (payload.cover?.trim()) {
+  } else if (rawCover) {
     // Fallback external URL
     body.cover = {
       type: "external",
       external: {
-        url: payload.cover.trim(),
+        url: rawCover,
       },
     };
   }

@@ -8,6 +8,7 @@ import { DatabaseSubHeader, type ViewMode } from "../components/DatabaseSubHeade
 import { TableView } from "../components/TableView";
 import { GalleryView } from "../components/GalleryView";
 import { ListView } from "../components/ListView";
+import { StatsView } from "../components/StatsView";
 import { ItemDrawer } from "../components/ItemDrawer";
 import { GuideModal } from "../components/GuideModal";
 import { NewEntryModal } from "../components/NewEntryModal";
@@ -193,6 +194,9 @@ export default function Home() {
 
   // Handle view change
   const handleViewModeChange = (v: ViewMode) => {
+    if (v === "stats") {
+      setIsDrawerOpen(false);
+    }
     updateParams({ view: v === "table" ? null : v });
   };
 
@@ -282,53 +286,55 @@ export default function Home() {
           data-purpose="catalog-grid"
         >
           <div className="flex flex-col min-h-full">
-            {/* Catalog Top Meta (Header) */}
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 flex-shrink-0">
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                  <span>📖</span> Koleksi Bacaan
-                </h1>
-                <p className="text-xs text-neutral-400 mt-1">
-                  Total {filteredItems.length} entri ditampilkan • Terakhir sinkronisasi{" "}
-                  {isRefetching ? "sedang memuat..." : "hari ini"}
-                </p>
-              </div>
+            {/* Catalog Top Meta (Header) - Only show in Table/Gallery/List view */}
+            {viewMode !== "stats" && (
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 flex-shrink-0">
+                <div>
+                  <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>📖</span> Koleksi Bacaan
+                  </h1>
+                  <p className="text-xs text-neutral-400 mt-1">
+                    Total {filteredItems.length} entri ditampilkan • Terakhir sinkronisasi{" "}
+                    {isRefetching ? "sedang memuat..." : "hari ini"}
+                  </p>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-mono text-neutral-500">
-                  Notion DB #{statusData?.hasDatabaseId ? "CONNECTED" : "MN-2026"}
-                </span>
-                <button
-                  onClick={() => setIsNewModalOpen(true)}
-                  className="px-2 py-1 bg-[#202020] hover:bg-[#282828] text-neutral-300 text-xs rounded border border-[#2f2f2f] transition flex items-center gap-1.5"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                  <span>Baris Baru</span>
-                </button>
-                {!isDrawerOpen && activeItem && (
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs font-mono text-neutral-500">
+                    Notion DB #{statusData?.hasDatabaseId ? "CONNECTED" : "MN-2026"}
+                  </span>
                   <button
-                    onClick={() => {
-                      setIsDrawerOpen(true);
-                      updateParams({ id: activeItem.id });
-                    }}
+                    onClick={() => setIsNewModalOpen(true)}
                     className="px-2 py-1 bg-[#202020] hover:bg-[#282828] text-neutral-300 text-xs rounded border border-[#2f2f2f] transition flex items-center gap-1.5"
-                    title="Buka panel inspeksi"
                   >
-                    <span>Inspect</span>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      <path
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                      />
                     </svg>
+                    <span>Baris Baru</span>
                   </button>
-                )}
+                  {!isDrawerOpen && activeItem && (
+                    <button
+                      onClick={() => {
+                        setIsDrawerOpen(true);
+                        updateParams({ id: activeItem.id });
+                      }}
+                      className="px-2 py-1 bg-[#202020] hover:bg-[#282828] text-neutral-300 text-xs rounded border border-[#2f2f2f] transition flex items-center gap-1.5"
+                      title="Buka panel inspeksi"
+                    >
+                      <span>Inspect</span>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path d="M9 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Loading State */}
             {isLoading && (
@@ -369,57 +375,64 @@ export default function Home() {
               </div>
             )}
 
-            {/* Empty State */}
-            {!isLoading && filteredItems.length === 0 && (
-              <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-[#262626] rounded-md p-12 text-center my-auto">
-                <span className="text-3xl mb-2">🔍</span>
-                <p className="text-sm font-medium text-neutral-300 mb-1">
-                  Tidak ada entri yang cocok
-                </p>
-                <p className="text-xs text-neutral-500 mb-4">
-                  Coba ubah kata kunci pencarian atau reset filter.
-                </p>
-                <button
-                  onClick={() => {
-                    handleSearchChange("");
-                    handleTypeChange("all");
-                    handleStatusChange("all");
-                  }}
-                  className="px-3 py-1.5 bg-[#202020] hover:bg-[#282828] text-white text-xs rounded border border-[#333333] transition"
-                >
-                  Reset Filter
-                </button>
-              </div>
-            )}
-
             {/* Views rendering */}
-            {!isLoading && filteredItems.length > 0 && (
+            {!isLoading && (
               <div className="flex-1 flex flex-col min-h-0">
-                {viewMode === "table" && (
-                  <TableView
-                    items={filteredItems}
-                    selectedItem={activeItem}
+                {viewMode === "stats" ? (
+                  <StatsView
+                    items={rawItems}
                     onSelectItem={handleSelectItem}
                     onOpenNewModal={() => setIsNewModalOpen(true)}
                   />
-                )}
+                ) : filteredItems.length === 0 ? (
+                  <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-[#262626] rounded-md p-12 text-center my-auto">
+                    <span className="text-3xl mb-2">🔍</span>
+                    <p className="text-sm font-medium text-neutral-300 mb-1">
+                      Tidak ada entri yang cocok
+                    </p>
+                    <p className="text-xs text-neutral-500 mb-4">
+                      Coba ubah kata kunci pencarian atau reset filter.
+                    </p>
+                    <button
+                      onClick={() => {
+                        handleSearchChange("");
+                        handleTypeChange("all");
+                        handleStatusChange("all");
+                      }}
+                      className="px-3 py-1.5 bg-[#202020] hover:bg-[#282828] text-white text-xs rounded border border-[#333333] transition cursor-pointer"
+                    >
+                      Reset Filter
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {viewMode === "table" && (
+                      <TableView
+                        items={filteredItems}
+                        selectedItem={activeItem}
+                        onSelectItem={handleSelectItem}
+                        onOpenNewModal={() => setIsNewModalOpen(true)}
+                      />
+                    )}
 
-                {viewMode === "gallery" && (
-                  <GalleryView
-                    items={filteredItems}
-                    selectedItem={activeItem}
-                    onSelectItem={handleSelectItem}
-                    onOpenNewModal={() => setIsNewModalOpen(true)}
-                  />
-                )}
+                    {viewMode === "gallery" && (
+                      <GalleryView
+                        items={filteredItems}
+                        selectedItem={activeItem}
+                        onSelectItem={handleSelectItem}
+                        onOpenNewModal={() => setIsNewModalOpen(true)}
+                      />
+                    )}
 
-                {viewMode === "list" && (
-                  <ListView
-                    items={filteredItems}
-                    selectedItem={activeItem}
-                    onSelectItem={handleSelectItem}
-                    onOpenNewModal={() => setIsNewModalOpen(true)}
-                  />
+                    {viewMode === "list" && (
+                      <ListView
+                        items={filteredItems}
+                        selectedItem={activeItem}
+                        onSelectItem={handleSelectItem}
+                        onOpenNewModal={() => setIsNewModalOpen(true)}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             )}

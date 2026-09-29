@@ -1,0 +1,23 @@
+# EAS Build ignore file
+# This file tells EAS Build what to ignore when uploading the project archive.
+# By defining .easignore, EAS uses this instead of .gitignore.
+# .env is deliberately NOT listed here so EAS receives your environment variables!
+
+node_modules/
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native builds & debug
+.kotlin/
+*.orig.*
+.DS_Store
+*.pem
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+*.tsbuildinfo
+
+# Explicitly include local .env in EAS Build upload:
+!.env

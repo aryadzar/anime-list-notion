@@ -43,39 +43,50 @@ export function extractTitlesFromText(text: string): { title: string; link?: str
     let line = rawLine;
     let originalUrl: string | undefined = undefined;
 
-    // Check if line is a URL
-    if (/^https?:\/\//i.test(line)) {
-      originalUrl = line;
-      try {
-        const u = new URL(line);
-        const segments = u.pathname.split("/").filter(Boolean);
+    // Check if line contains a URL
+    const urlMatch = line.match(/(https?:\/\/[^\s]+)/i);
+    if (urlMatch) {
+      originalUrl = urlMatch[1];
+      const leadingText = line.substring(0, urlMatch.index).trim();
+      const trailingText = line.substring((urlMatch.index || 0) + urlMatch[1].length).trim();
 
-        // 1. Detect MangaGo / Webtoon / Manga reading URLs / Anime streaming & database URLs:
-        // E.g. https://www.mangago.me/read-manga/perfect_spiral/
-        // E.g. https://myanimelist.net/anime/52991/Sousou_no_Frieren
-        // E.g. https://anilist.co/anime/154587/Sousou-no-Frieren/
-        const prefixIndex = segments.findIndex((s) =>
-          ["read-manga", "manga", "series", "comic", "manhwa", "anime"].includes(s.toLowerCase())
-        );
+      if (leadingText.length >= 2 && !/^https?:\/\//i.test(leadingText)) {
+        line = leadingText;
+      } else if (trailingText.length >= 2) {
+        line = trailingText;
+      } else {
+        line = originalUrl;
+      }
 
-        if (prefixIndex !== -1 && segments[prefixIndex + 1] && !/^\d+$/.test(segments[prefixIndex + 1])) {
-          line = segments[prefixIndex + 1].replace(/[-_]+/g, " ");
-        } else if (prefixIndex !== -1 && segments[prefixIndex + 2] && /^\d+$/.test(segments[prefixIndex + 1])) {
-          // URLs like /anime/52991/Sousou_no_Frieren
-          line = segments[prefixIndex + 2].replace(/[-_]+/g, " ");
-        } else if (segments.includes("home") && segments.includes("people")) {
-          // If the user pasted a profile/bookmark list URL like /home/people/1319448/manga/1/
-          line = "Daftar Bookmark MangaGo";
-        } else {
-          // General slug extraction
-          const slug = segments.pop() || segments.pop() || "";
-          if (slug && !/^(home|people|\d+|manga|read-manga|chapter|series|anime)$/i.test(slug)) {
-            line = slug.replace(/[-_]+/g, " ");
-          } else if (segments.length > 0) {
-            line = segments[segments.length - 1].replace(/[-_]+/g, " ");
+      if (line === originalUrl) {
+        try {
+          const u = new URL(originalUrl);
+          const segments = u.pathname.split("/").filter(Boolean);
+
+          // 1. Detect MangaGo / Webtoon / Manga reading URLs / Anime streaming & database URLs:
+          const prefixIndex = segments.findIndex((s) =>
+            ["read-manga", "manga", "series", "comic", "manhwa", "anime"].includes(s.toLowerCase())
+          );
+
+          if (prefixIndex !== -1 && segments[prefixIndex + 1] && !/^\d+$/.test(segments[prefixIndex + 1])) {
+            line = segments[prefixIndex + 1].replace(/[-_]+/g, " ");
+          } else if (prefixIndex !== -1 && segments[prefixIndex + 2] && /^\d+$/.test(segments[prefixIndex + 1])) {
+            // URLs like /anime/52991/Sousou_no_Frieren
+            line = segments[prefixIndex + 2].replace(/[-_]+/g, " ");
+          } else if (segments.includes("home") && segments.includes("people")) {
+            // If the user pasted a profile/bookmark list URL like /home/people/1319448/manga/1/
+            line = "Daftar Bookmark MangaGo";
+          } else {
+            // General slug extraction
+            const slug = segments.pop() || segments.pop() || "";
+            if (slug && !/^(home|people|\d+|manga|read-manga|chapter|series|anime)$/i.test(slug)) {
+              line = slug.replace(/[-_]+/g, " ");
+            } else if (segments.length > 0) {
+              line = segments[segments.length - 1].replace(/[-_]+/g, " ");
+            }
           }
-        }
-      } catch (_) {}
+        } catch (_) {}
+      }
     }
 
     // Also check for Markdown link: [Title](https://...)

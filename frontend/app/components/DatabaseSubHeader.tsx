@@ -1,4 +1,4 @@
-export type ViewMode = "table" | "gallery" | "list";
+export type ViewMode = "table" | "gallery" | "list" | "stats";
 
 interface DatabaseSubHeaderProps {
   viewMode: ViewMode;
@@ -32,7 +32,7 @@ export function DatabaseSubHeader({
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth="2"
@@ -79,6 +79,22 @@ export function DatabaseSubHeader({
             />
           </svg>
           <span>List</span>
+        </button>
+
+        {/* Stats & Analytics Wrapped Button */}
+        <button
+          onClick={() => onViewModeChange("stats")}
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded transition ${
+            viewMode === "stats"
+              ? "text-neutral-100 border-b-2 border-purple-400 font-medium bg-[#1d1d1d]"
+              : "text-neutral-400 hover:text-neutral-200 hover:bg-[#202020]"
+          }`}
+        >
+          <span className="text-purple-400">📊</span>
+          <span>Wawasan &amp; Stats</span>
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-950/80 text-purple-300 border border-purple-800 font-mono font-semibold">
+            Wrapped
+          </span>
         </button>
       </div>
 

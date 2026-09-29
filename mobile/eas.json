@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "bun": "1.4.2"
+    },
+    "preview": {
+      "distribution": "internal",
+      "bun": "1.4.2",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "bun": "1.4.2",
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
