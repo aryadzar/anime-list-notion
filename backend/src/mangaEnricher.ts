@@ -85,7 +85,7 @@ export function extractTitlesFromText(text: string): { title: string; link?: str
               line = segments[segments.length - 1].replace(/[-_]+/g, " ");
             }
           }
-        } catch (_) {}
+        } catch (_) { }
       }
     }
 
@@ -221,8 +221,15 @@ async function searchAniList(title: string, typeHint?: string): Promise<Partial<
   }
 }
 
-// 2. Query MangaDex API
+// 2. Query MangaDex API (Di-nonaktifkan sementara sesuai permintaan pengguna, jangan dihapus kodenya)
+const ENABLE_MANGADEX = true;
+
 async function searchMangaDexOnly(title: string): Promise<Partial<MangaPreviewItem> | null> {
+  // Early return jika MangaDex dinonaktifkan
+  if (!ENABLE_MANGADEX) {
+    return null;
+  }
+
   try {
     const searchUrl = `https://api.mangadex.org/manga?title=${encodeURIComponent(
       title
@@ -359,8 +366,8 @@ export async function searchMangaDex(
     };
   }
 
-  // 2. Fallback to MangaDex for Manga/Manhwa if not searching specifically for Anime
-  if (effectiveTypeHint !== "Anime") {
+  // 2. Fallback to MangaDex for Manga/Manhwa if not searching specifically for Anime (Dinonaktifkan jika ENABLE_MANGADEX = false)
+  if (ENABLE_MANGADEX && effectiveTypeHint !== "Anime") {
     console.log(`[ENRICHER] Mencari di MangaDex untuk "${title}"...`);
     const mdResult = await searchMangaDexOnly(title);
 
@@ -401,9 +408,9 @@ export async function searchMangaDex(
       title: anilistResult.title || title,
       originalQuery: title,
       cover: anilistResult.cover || null,
-      tipe: anilistResult.tipe || "Anime",
+      tipe: anilistResult.tipe || (effectiveTypeHint === "Anime" ? "Anime" : "Manhwa"),
       status: anilistResult.status || "Reading/Watching",
-      tags: anilistResult.tags && anilistResult.tags.length > 0 ? anilistResult.tags : [{ name: "Anime" }],
+      tags: anilistResult.tags && anilistResult.tags.length > 0 ? anilistResult.tags : [{ name: anilistResult.tipe || (effectiveTypeHint === "Anime" ? "Anime" : "Manhwa") }],
       link: originalUrl || anilistResult.link || null,
       notes: anilistResult.notes || "",
       matched: true,

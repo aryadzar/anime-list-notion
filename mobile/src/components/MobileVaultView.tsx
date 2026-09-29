@@ -120,7 +120,7 @@ export function MobileVaultView({
         onPress={() => setSelectedItem(item)}
         activeOpacity={0.8}
       >
-        {/* Thumbnail with optional RAW badge */}
+        {/* Thumbnail */}
         <View style={styles.thumbWrapper}>
           <Image
             source={{ uri: item.cover }}
@@ -128,11 +128,6 @@ export function MobileVaultView({
             contentFit="cover"
             cachePolicy="memory-disk"
           />
-          {item.id === 'MN-PLT-001' && (
-            <View style={styles.rawBadge}>
-              <Text style={styles.rawText}>RAW</Text>
-            </View>
-          )}
         </View>
 
         {/* Middle Info */}
@@ -269,15 +264,21 @@ export function MobileVaultView({
                   </View>
                 </View>
 
-                {/* Properties Grid */}
-                <View style={styles.propGrid}>
-                  <View style={styles.propCol}>
-                    <Text style={styles.propLabel}>TIPE SUMBER</Text>
-                    <Text style={styles.propValue}>{selectedItem.sourceType}</Text>
-                  </View>
-                  <View style={styles.propCol}>
-                    <Text style={styles.propLabel}>BAHASA</Text>
-                    <Text style={styles.propValue}>{selectedItem.language}</Text>
+                {/* Genre / Tags Section */}
+                <View style={styles.genreBox}>
+                  <Text style={styles.propLabel}>GENRE / TAGS</Text>
+                  <View style={styles.genreRow}>
+                    {selectedItem.tags && selectedItem.tags.length > 0 ? (
+                      selectedItem.tags.map((tag, idx) => (
+                        <View key={idx} style={styles.genreChip}>
+                          <Text style={styles.genreChipText}>
+                            {typeof tag === 'string' ? tag : (tag as any).name || ''}
+                          </Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.emptyGenreText}>Tidak ada genre terdaftar</Text>
+                    )}
                   </View>
                 </View>
 
@@ -679,6 +680,39 @@ const styles = StyleSheet.create({
   sheetDate: {
     fontSize: 10,
     color: '#9CA3AF',
+  },
+  genreBox: {
+    backgroundColor: '#EFECE4',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2DDD2',
+  },
+  genreRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  genreChip: {
+    backgroundColor: '#E2DDD2',
+    borderWidth: 1,
+    borderColor: '#D5CDC0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  genreChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#171717',
+  },
+  emptyGenreText: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   propGrid: {
     flexDirection: 'row',

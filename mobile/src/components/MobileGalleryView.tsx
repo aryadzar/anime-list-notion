@@ -432,19 +432,21 @@ export function MobileGalleryView({
                   </View>
                 </View>
 
-                {/* Properties Grid */}
-                <View style={styles.sheetGridBox}>
-                  <View style={styles.sheetGridCol}>
-                    <Text style={styles.gridLabel}>TIPE SUMBER</Text>
-                    <Text style={styles.gridValue}>
-                      {selectedItem.sourceType || 'Official Webtoon'}
-                    </Text>
-                  </View>
-                  <View style={styles.sheetGridCol}>
-                    <Text style={styles.gridLabel}>BAHASA</Text>
-                    <Text style={styles.gridValue}>
-                      {selectedItem.language || 'Bahasa Indonesia'}
-                    </Text>
+                {/* Genre / Tags Section */}
+                <View style={styles.genreBox}>
+                  <Text style={styles.gridLabel}>GENRE / TAGS</Text>
+                  <View style={styles.genreRow}>
+                    {selectedItem.tags && selectedItem.tags.length > 0 ? (
+                      selectedItem.tags.map((tag, idx) => (
+                        <View key={idx} style={styles.genreChip}>
+                          <Text style={styles.genreChipText}>
+                            {typeof tag === 'string' ? tag : (tag as any).name || ''}
+                          </Text>
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={styles.emptyGenreText}>Tidak ada genre terdaftar</Text>
+                    )}
                   </View>
                 </View>
 
@@ -1037,6 +1039,39 @@ const styles = StyleSheet.create({
   sheetDate: {
     fontSize: 11,
     color: '#777777',
+  },
+  genreBox: {
+    backgroundColor: '#EAE6DC',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D8D3C5',
+  },
+  genreRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 4,
+  },
+  genreChip: {
+    backgroundColor: '#DFDAD0',
+    borderWidth: 1,
+    borderColor: '#CCC6B8',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  genreChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#171717',
+  },
+  emptyGenreText: {
+    fontSize: 11,
+    color: '#888888',
+    fontStyle: 'italic',
+    marginTop: 2,
   },
   sheetGridBox: {
     flexDirection: 'row',

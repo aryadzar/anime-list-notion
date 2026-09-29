@@ -221,8 +221,23 @@ export async function fetchLiveNotionItems(token: string): Promise<CatalogItem[]
   const result = await res.json();
   const rawItems: any[] = result.data || [];
 
+  // Deduplicate rawItems by normalized ID and title
+  const seenIds = new Set<string>();
+  const seenTitles = new Set<string>();
+  const uniqueRawItems = rawItems.filter((it: any) => {
+    const normId = it.id ? String(it.id).replace(/-/g, '').toLowerCase() : '';
+    const normTitle = it.title ? String(it.title).trim().toLowerCase() : '';
+
+    if (normId && seenIds.has(normId)) return false;
+    if (normTitle && normTitle !== 'untitled' && seenTitles.has(normTitle)) return false;
+
+    if (normId) seenIds.add(normId);
+    if (normTitle && normTitle !== 'untitled') seenTitles.add(normTitle);
+    return true;
+  });
+
   // Map backend NotionItem to mobile CatalogItem
-  return rawItems.map((it: any, idx: number) => {
+  return uniqueRawItems.map((it: any, idx: number) => {
     const total = 100;
     const current = it.status === 'Completed' ? 100 : Math.floor(Math.random() * 60) + 10;
     const progress = Math.min(100, Math.round((current / total) * 100));

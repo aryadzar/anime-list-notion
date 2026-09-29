@@ -74,6 +74,32 @@ export default function Home() {
   // Local additions
   const [localAddedItems, setLocalAddedItems] = useState<NotionItem[]>([]);
 
+  // Automatically clear local additions once serverItems has fetched/synced them
+  useEffect(() => {
+    if (!data?.data || data.data.length === 0) return;
+    const serverIdSet = new Set(
+      data.data.map((i) => i.id.replace(/-/g, "").toLowerCase())
+    );
+    const serverTitleSet = new Set(
+      data.data
+        .map((i) => i.title?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    setLocalAddedItems((prev) => {
+      if (prev.length === 0) return prev;
+      const remaining = prev.filter((local) => {
+        const normId = local.id?.replace(/-/g, "").toLowerCase();
+        const normTitle = local.title?.trim().toLowerCase();
+        const existsOnServer =
+          (normId && serverIdSet.has(normId)) ||
+          (normTitle && normTitle !== "untitled" && serverTitleSet.has(normTitle));
+        return !existsOnServer;
+      });
+      return remaining.length !== prev.length ? remaining : prev;
+    });
+  }, [data?.data]);
+
   // Local status overrides for immediate reactive state reflection across views
   const [statusOverrides, setStatusOverrides] = useState<Record<string, string>>({});
 
@@ -95,18 +121,51 @@ export default function Home() {
     );
   }, []);
 
-  // Base items with reactive status overrides
+  // Base items with reactive status overrides and strict deduplication
   const rawItems = useMemo(() => {
     const serverItems = data?.data || [];
-    const combined = [...localAddedItems, ...serverItems];
-    return combined.map((it) => {
-      const norm = it.id.replace(/-/g, "").toLowerCase();
-      const override = statusOverrides[norm] || statusOverrides[it.id];
-      if (override && override !== it.status) {
-        return { ...it, status: override };
-      }
-      return it;
+    const serverIdSet = new Set(
+      serverItems.map((it) => it.id.replace(/-/g, "").toLowerCase())
+    );
+    const serverTitleSet = new Set(
+      serverItems
+        .map((it) => it.title?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    // Only include local items that have NOT yet appeared in serverItems
+    const pendingLocalItems = localAddedItems.filter((local) => {
+      const normId = local.id ? local.id.replace(/-/g, "").toLowerCase() : "";
+      const normTitle = local.title ? local.title.trim().toLowerCase() : "";
+      const isAlreadyOnServer =
+        (normId && serverIdSet.has(normId)) ||
+        (normTitle && normTitle !== "untitled" && serverTitleSet.has(normTitle));
+      return !isAlreadyOnServer;
     });
+
+    const seenIds = new Set<string>();
+    const seenTitles = new Set<string>();
+    const uniqueCombined: NotionItem[] = [];
+
+    for (const it of [...pendingLocalItems, ...serverItems]) {
+      const normId = it.id ? it.id.replace(/-/g, "").toLowerCase() : "";
+      const normTitle = it.title ? it.title.trim().toLowerCase() : "";
+
+      if (normId && seenIds.has(normId)) continue;
+      if (normTitle && normTitle !== "untitled" && seenTitles.has(normTitle)) continue;
+
+      if (normId) seenIds.add(normId);
+      if (normTitle && normTitle !== "untitled") seenTitles.add(normTitle);
+
+      const override = statusOverrides[normId] || statusOverrides[it.id];
+      if (override && override !== it.status) {
+        uniqueCombined.push({ ...it, status: override });
+      } else {
+        uniqueCombined.push(it);
+      }
+    }
+
+    return uniqueCombined;
   }, [data?.data, localAddedItems, statusOverrides]);
 
   // Helper to update URL search parameters cleanly
@@ -240,7 +299,21 @@ export default function Home() {
   };
 
   const handleAddNewItem = (item: NotionItem) => {
-    setLocalAddedItems((prev) => [item, ...prev]);
+    const normId = item.id ? item.id.replace(/-/g, "").toLowerCase() : "";
+    const normTitle = item.title ? item.title.trim().toLowerCase() : "";
+
+    setLocalAddedItems((prev) => {
+      const alreadyPresent = prev.some((it) => {
+        const itNormId = it.id ? it.id.replace(/-/g, "").toLowerCase() : "";
+        const itNormTitle = it.title ? it.title.trim().toLowerCase() : "";
+        return (
+          (normId && itNormId === normId) ||
+          (normTitle && normTitle !== "untitled" && itNormTitle === normTitle)
+        );
+      });
+      if (alreadyPresent) return prev;
+      return [item, ...prev];
+    });
     setIsDrawerOpen(true);
     updateParams({ id: item.id });
   };

@@ -285,9 +285,9 @@ export function MobileVaultView({
             <div
               key={item.id}
               onClick={() => setSelectedItem(item)}
-              className="bg-white border border-[#E3DC CE] hover:border-[#C8BFB0] rounded-xl p-3 flex items-center space-x-3.5 shadow-2xs transition-all hover:shadow-xs active:scale-[0.99] cursor-pointer"
+              className="bg-white border border-[#E3DCCE] hover:border-[#C8BFB0] rounded-xl p-3 flex items-center space-x-3.5 shadow-2xs transition-all hover:shadow-xs active:scale-[0.99] cursor-pointer"
             >
-              {/* Thumbnail with RAW badge */}
+              {/* Thumbnail */}
               <div className="relative w-14 h-18 rounded-lg overflow-hidden bg-neutral-200 shrink-0 border border-[#DDD5C7]">
                 {item.cover ? (
                   <img
@@ -301,9 +301,6 @@ export function MobileVaultView({
                     {item.icon || "📖"}
                   </div>
                 )}
-                <span className="absolute top-1 left-1 bg-black/80 text-white font-bold text-[8px] px-1 py-0.2 rounded font-mono">
-                  RAW
-                </span>
               </div>
 
               {/* Middle Details */}
@@ -434,29 +431,32 @@ export function MobileVaultView({
               </div>
             </div>
 
-            {/* Info Grid: TIPE SUMBER & BAHASA */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="bg-white border border-[#E3DC CE] rounded-xl p-3 shadow-2xs">
-                <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block mb-0.5">
-                  TIPE SUMBER
-                </span>
-                <span className="text-xs font-extrabold text-neutral-900 truncate block">
-                  Official Webtoon
-                </span>
-              </div>
-              <div className="bg-white border border-[#E3DC CE] rounded-xl p-3 shadow-2xs">
-                <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block mb-0.5">
-                  BAHASA
-                </span>
-                <span className="text-xs font-extrabold text-neutral-900 truncate block">
-                  Bahasa Indonesia
-                </span>
+            {/* Genre / Tags Section */}
+            <div className="bg-white border border-[#E3DCCE] rounded-xl p-3.5 shadow-2xs space-y-2">
+              <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block">
+                GENRE / TAGS
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedItem.tags && selectedItem.tags.length > 0 ? (
+                  selectedItem.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-[#F0EBE1] border border-[#DDD5C7] text-neutral-800 text-xs font-semibold px-2.5 py-1 rounded-md font-sans"
+                    >
+                      {tag.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-neutral-400 italic font-mono">
+                    Tidak ada genre terdaftar
+                  </span>
+                )}
               </div>
             </div>
 
             {/* Notes Section (Replacing Chapter Stepper) */}
             {selectedItem.notes && (
-              <div className="bg-white border border-[#E3DC CE] rounded-xl p-3.5 shadow-2xs space-y-1">
+              <div className="bg-white border border-[#E3DCCE] rounded-xl p-3.5 shadow-2xs space-y-1">
                 <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block">
                   CATATAN / SINOPSIS
                 </span>

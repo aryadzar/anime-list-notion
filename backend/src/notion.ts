@@ -346,15 +346,29 @@ export async function fetchNotionItems(): Promise<ApiResponse<NotionItem[]>> {
       }
     }
 
-    // Deduplicate pages by id in case of overlap
-    const seen = new Set<string>();
-    const uniquePages = rawPages.filter((p) => {
-      if (!p.id || seen.has(p.id)) return false;
-      seen.add(p.id);
-      return true;
-    });
+    // Deduplicate pages by normalized ID and title in case of pagination or multi-source overlap
+    const seenIds = new Set<string>();
+    const seenTitles = new Set<string>();
+    const items: NotionItem[] = [];
 
-    const items = uniquePages.map((page: any) => parseNotionPage(page));
+    for (const page of rawPages) {
+      if (!page?.id) continue;
+      const normId = String(page.id).replace(/-/g, "").toLowerCase();
+      if (seenIds.has(normId)) continue;
+      seenIds.add(normId);
+
+      const parsed = parseNotionPage(page);
+      const normTitle = parsed.title?.trim().toLowerCase();
+      if (normTitle && normTitle !== "untitled" && seenTitles.has(normTitle)) {
+        console.log(`[BACKEND] Filtering duplicate page by title: "${parsed.title}" (${page.id})`);
+        continue;
+      }
+      if (normTitle && normTitle !== "untitled") {
+        seenTitles.add(normTitle);
+      }
+
+      items.push(parsed);
+    }
 
     return {
       success: true,

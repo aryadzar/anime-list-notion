@@ -297,7 +297,7 @@ export function MobileGalleryView({
 
       {/* 5. Bottom Weekly Reading Stats Banner (Image 3 Match) */}
       <div className="px-3.5 pt-3">
-        <div className="bg-white border border-[#E3DC CE] rounded-xl p-3.5 flex items-center justify-between shadow-xs">
+        <div className="bg-white border border-[#E3DCCE] rounded-xl p-3.5 flex items-center justify-between shadow-xs">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-lg bg-[#171717] text-white flex items-center justify-center text-lg">
               🔥
@@ -406,6 +406,41 @@ export function MobileGalleryView({
                 </p>
               </div>
             </div>
+
+            {/* Genre / Tags Section */}
+            <div className="bg-white border border-[#E3DCCE] rounded-xl p-3.5 shadow-2xs space-y-2">
+              <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block">
+                GENRE / TAGS
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {selectedItem.tags && selectedItem.tags.length > 0 ? (
+                  selectedItem.tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-[#F0EBE1] border border-[#DDD5C7] text-neutral-800 text-xs font-semibold px-2.5 py-1 rounded-md font-sans"
+                    >
+                      {tag.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-xs text-neutral-400 italic font-mono">
+                    Tidak ada genre terdaftar
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Notes Section if available */}
+            {selectedItem.notes && (
+              <div className="bg-white border border-[#E3DCCE] rounded-xl p-3.5 shadow-2xs space-y-1">
+                <span className="text-[10px] font-bold text-neutral-400 font-mono uppercase tracking-wider block">
+                  CATATAN / SINOPSIS
+                </span>
+                <p className="text-xs text-neutral-700 leading-relaxed font-sans">
+                  {selectedItem.notes}
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2 pt-2">
               <a
